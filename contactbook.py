@@ -1,8 +1,9 @@
 import csv
 import os
+import re
 
 CONTACTS_FILE = 'contacts.csv'
-FIELDNAMES = ['Name', 'Phone', 'Email']
+FIELDNAMES = ['Name', 'Phone', 'Email', 'Group', 'Notes']
 
 def load_contacts():
     if not os.path.exists(CONTACTS_FILE):
@@ -17,65 +18,55 @@ def save_contacts(contacts):
         writer.writeheader()
         writer.writerows(contacts)
 
+def validate_contact(name, phone, email):
+    if not name:
+        print("Name cannot be empty.")
+        return False
+    if not re.match(r"^\d{10}$", phone):
+        print("Phone must be 10 digits.")
+        return False
+    if email and not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        print("Invalid email format.")
+        return False
+    return True
+
 def add_contact(contacts):
     name = input("Enter name: ").strip()
     phone = input("Enter phone number: ").strip()
     email = input("Enter email: ").strip()
-    if name == '':
-        print("Name cannot be empty.")
+    group = input("Enter group (Family, Friends, Work, etc.): ").strip()
+    notes = input("Notes (optional): ").strip()
+    if not validate_contact(name, phone, email):
         return
-    contacts.append({'Name': name, 'Phone': phone, 'Email': email})
+    contacts.append({'Name': name, 'Phone': phone, 'Email': email, 'Group': group, 'Notes': notes})
     print("Contact added.")
-
-def search_contacts(contacts):
-    query = input("Search by name: ").strip().lower()
-    filtered = [c for c in contacts if query in c['Name'].lower()]
-    if not filtered:
-        print("No contacts found.")
-    else:
-        for i, c in enumerate(filtered, 1):
-            print(f"{i}. {c['Name']}, Phone: {c['Phone']}, Email: {c['Email']}")
-
-def update_contact(contacts):
-    search_contacts(contacts)
-    try:
-        idx = int(input("Enter contact number to update: ")) - 1
-        if idx < 0 or idx >= len(contacts):
-            print("Invalid contact number.")
-            return
-        contact = contacts[idx]
-        print(f"Updating contact {contact['Name']}:")
-        name = input(f"New name [{contact['Name']}]: ").strip()
-        phone = input(f"New phone [{contact['Phone']}]: ").strip()
-        email = input(f"New email [{contact['Email']}]: ").strip()
-        if name:
-            contact['Name'] = name
-        if phone:
-            contact['Phone'] = phone
-        if email:
-            contact['Email'] = email
-        print("Contact updated.")
-    except ValueError:
-        print("Invalid input.")
-
-def delete_contact(contacts):
-    search_contacts(contacts)
-    try:
-        idx = int(input("Enter contact number to delete: ")) - 1
-        if idx < 0 or idx >= len(contacts):
-            print("Invalid contact number.")
-            return
-        contact = contacts.pop(idx)
-        print(f"Deleted contact: {contact['Name']}")
-    except ValueError:
-        print("Invalid input.")
 
 def list_contacts(contacts):
     if not contacts:
         print("No contacts available.")
         return
-    for i, c in enumerate(contacts, 1):
-        print(f"{i}. {c['Name']}, Phone: {c['Phone']}, Email: {c['Email']}")
+    sorted_contacts = sorted(contacts, key=lambda c: c['Name'])
+    for i, c in enumerate(sorted_contacts, 1):
+        print(f"{i}. {c['Name']}, Phone: {c['Phone']}, Email: {c['Email']}, Group: {c['Group']}, Notes: {c['Notes']}")
+
+def import_contacts(contacts):
+    file_path = input("Import from file: ").strip()
+    if not os.path.exists(file_path):
+        print("File not found.")
+        return
+    with open(file_path, mode='r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        imported = list(reader)
+        contacts.extend(imported)
+    print(f"Imported {len(imported)} contacts.")
+
+def export_contacts(contacts):
+    file_path = input("Export to file: ").strip()
+    with open(file_path, mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
+        writer.writeheader()
+        writer.writerows(contacts)
+    print(f"Exported {len(contacts)} contacts.")
 
 def main():
     contacts = load_contacts()
@@ -83,28 +74,24 @@ def main():
         print("\n--- Contact Book ---")
         print("1. List contacts")
         print("2. Add new contact")
-        print("3. Search contacts")
-        print("4. Update contact")
-        print("5. Delete contact")
-        print("6. Save and Exit")
+        print("3. Import contacts")
+        print("4. Export contacts")
+        print("5. Save and Exit")
         choice = input("Choose an option: ").strip()
-
         if choice == '1':
             list_contacts(contacts)
         elif choice == '2':
             add_contact(contacts)
         elif choice == '3':
-            search_contacts(contacts)
+            import_contacts(contacts)
         elif choice == '4':
-            update_contact(contacts)
+            export_contacts(contacts)
         elif choice == '5':
-            delete_contact(contacts)
-        elif choice == '6':
             save_contacts(contacts)
             print("Contacts saved. Goodbye!")
             break
         else:
-            print("Invalid choice. Please select 1-6.")
+            print("Invalid choice. Please select 1-5.")
 
 if __name__ == '__main__':
     main()
